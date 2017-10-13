@@ -7,19 +7,28 @@
 using namespace cv;
 using namespace std;
 
+/***************************** 函数声明部分 start ***********************************/
+
 vector<Vec4f> operation(string path, Mat image); // 对输入的图像进行直线检测
 vector<Line> createLine(vector<Vec4f> lines); // 构造直线
 
-bool canCluster(Line l1, Line l2); // 判断能否聚合或连接
+bool canCluster(Line l1, Line l2);            // 判断能否聚合或连接
 double distanceBetweenLine(Line l1, Line l2); // 估计两条直线间的距离
 bool isPointNear(Point p1, Point p2, double th); // 判断两个点是否接近
-int isConnect(Line l1, Line l2, int th); // 返回连接的类型
+int isConnect(Line l1, Line l2, int th);      // 返回连接的类型
 
 vector<Line> connectLines(vector<Line> lines, int th, Mat dst); // 连接直线
 vector<Line> clusterLines(vector<Line> lines, int th, Mat dst); // 聚合直线
 double match(vector<Vec4f> lines1, vector<Vec4f> lines2, 
-	InputArray m1, InputArray m2); // 计算两组直线的匹配度
+	InputArray m1, InputArray m2);     // 计算两组直线的匹配度
+double averageK(vector<Line> LineSet); // 计算平均斜率（用于计算TK）
+double getTP(InputArray m1, InputArray m2); // 计算TP:距离阈值
+double getAngle(double k1, double k2); // 计算两条直线夹角
+double calculateMean(vector<vector<double>> m); // 计算矩阵的相似度
+double calculateCorr2(vector<vector<double>> m1,
+	vector<vector<double>> m2);
 
+/***************************** 函数声明部分 end *************************************/
 
 int main() {
 
@@ -279,7 +288,7 @@ vector<Line> clusterLines(vector<Line> lines, int th, Mat dst) {
 	vector<Line> *result = new vector<Line>();
 	size_t length = lines.size();
 	
-	// TODO 写一个hashmap
+	// TODO 写一个hashmap，动态地删除聚合后无用的直线
 
 	for (int i = 0; i < length; i++) {
 		Line line1 = lines[i];
@@ -367,4 +376,100 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 	imshow("直线聚合后的图像2", dst2);*/
 
 	return 0.0;
+}
+
+
+/**
+ * 计算平均斜率（用于计算TK）
+ */
+double averageK(vector<Line> LineSet) {
+	double avg = 0;
+	int count = 0;
+	for (int i = 0; i < LineSet.size(); i++) {
+		if (LineSet[i].k != 100000) {
+			avg += LineSet[i].k;
+			count++;
+		}
+	}
+	avg /= count;
+	return avg;
+}
+
+
+/*
+ * 计算TP:距离阈值
+ */
+double getTP(InputArray m1, InputArray m2) {
+	return (m1.getMat().rows + m2.getMat().rows) / 6;
+}
+
+
+/**
+ * 计算两条直线夹角
+ */
+double getAngle(double k1, double k2) {
+	return atan(abs(k2 - k1) / (1 + k1 * k2));
+}
+
+
+/**
+ * 计算两个矩阵的相似度
+ * matlab中的corr2()函数，好麻烦
+ */
+double calculateMean(vector<vector<double>> m) {
+
+	vector<double> *mean = new vector<double>();
+	int p = 0;
+	for (int j = m[p].size() - 1; j >= 0; j--) {
+		double count = 0;
+		for (int i = 0, k = j; i <= m[p].size() - 1; k--, i++) {
+			count += m[i][k];
+		}
+		count /= m.size();
+		(*mean).push_back(count);
+		p++;
+	}
+
+	double count = 0;
+	for (int i = 0; i < (*mean).size(); i++) {
+		count += (*mean)[i];
+	}
+	count /= ((*mean).size() + 1);
+	return count;
+}
+
+double calculateCorr2(vector<vector<double>> m1,
+	vector<vector<double>> m2) {
+
+	double mean1 = calculateMean(m1);
+	double mean2 = calculateMean(m2);
+
+	//计算分子
+	double numerator = 0;
+	for (int i = 0; i < m1.size(); i++) {
+		for (int j = 0; j < m1[i].size(); j++) {
+			numerator += (m1[i][j] - mean1) * (m2[i][j] - mean2);
+		}
+		for (int j = m1[i].size(); j <= m1.size(); j++) {
+			numerator += mean1 * mean2;
+		}
+	}
+
+	//计算分母 sqrt(pow(x,2) + pow(y,2));
+	double d1 = 0;
+	double d2 = 0;
+	for (int i = 0; i < m1.size(); i++) {
+		for (int j = 0; j < m1[i].size(); j++) {
+			d1 += pow((m1[i][j] - mean1), 2);
+			d2 += pow((m2[i][j] - mean2), 2);
+		}
+		for (int j = m1[i].size(); j <= m1.size(); j++) {
+			d1 += pow(mean1, 2);
+			d2 += pow(mean2, 2);
+		}
+	}
+	double denominator = sqrt(d1) * sqrt(d2);
+
+	if (numerator == 0) return 0.0;
+	return numerator / denominator;
 }
