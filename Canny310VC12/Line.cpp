@@ -3,7 +3,7 @@
 #include<math.h>
 
 #define PI 3.1415926
-#define MAX 100000
+
 
 using namespace cv;
 
@@ -13,19 +13,10 @@ Line::Line(Vec4f line) {
 	start = Point(line[0], line[1]);
 	end = Point(line[2], line[3]);
 	mid = getMidPoint();
-
-	// 计算长度和相对长度
-	length = getLength(start, end);
-
-	// 计算直线的斜率
-	if (end.x - start.x != 0) {
-		k = (double)(start.y - end.y) / (start.x - end.x);
-	}else {
-		k = MAX;
-	}
-
-	//计算直线与水平方向的夹角
-	theta = atan(k) * 180 / PI;
+	
+	length = getLength(start, end); // 计算长度和相对长度
+	k = getK(); // 计算直线的斜率
+	theta = getTheta(); //计算直线与水平方向的夹角
 }
 
 Line::Line(void) {
@@ -37,8 +28,8 @@ Line::~Line(void){
 /**
  * 计算直线的长度
  */
-double Line::getLength(Line line) {
-	return getLength(line.start, line.end);
+double Line::getLength() {
+	return getLength(start, end);
 }
 
 double Line::getLength(Point start, Point end) {
@@ -57,3 +48,21 @@ Point Line::getMidPoint() {
 	return *mid;
 }
 
+/**
+ * 计算斜率
+ */
+double Line::getK() {
+	double k = 100000;
+	if (abs(end.x - start.x) > 1e-6) {
+		k = (double)(start.y - end.y) / (start.x - end.x);
+	}
+	return k;
+}
+
+
+/**
+ * 计算theta
+ */
+double Line::getTheta() {
+	return atan(k) * 180 / PI;
+}

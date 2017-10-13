@@ -21,8 +21,9 @@ public:
 	Line(void);
 	~Line(void);
 
-private:
-	double getLength(Line line);
-	double getLength(Point start, Point end);
-	Point getMidPoint();
+	double getLength(); // 计算长度
+	double getLength(Point start, Point end); // 计算长度的重载函数
+	Point getMidPoint(); // 计算中点
+	double getK(); // 计算斜率
+	double getTheta(); // 计算theta
 };
