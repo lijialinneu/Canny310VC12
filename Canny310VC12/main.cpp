@@ -1,11 +1,13 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <time.h>
-#include <set>
+#include <hash_set>
 #include "Line.h"
+#include"MinHeap.h"
 
 using namespace cv;
 using namespace std;
+
 
 /***************************** 函数声明部分 start ***********************************/
 
@@ -19,6 +21,8 @@ int isConnect(Line l1, Line l2, int th);      // 返回连接的类型
 
 vector<Line> connectLines(vector<Line> lines, int th, Mat dst); // 连接直线
 vector<Line> clusterLines(vector<Line> lines, int th, Mat dst); // 聚合直线
+vector<Line> getTopK(vector<Line> lines, int K); // 取得topK的直线
+
 double match(vector<Vec4f> lines1, vector<Vec4f> lines2, 
 	InputArray m1, InputArray m2);     // 计算两组直线的匹配度
 double averageK(vector<Line> LineSet); // 计算平均斜率（用于计算TK）
@@ -29,6 +33,7 @@ double calculateCorr2(vector<vector<double>> m1,
 	vector<vector<double>> m2);
 
 /***************************** 函数声明部分 end *************************************/
+
 
 int main() {
 
@@ -41,7 +46,6 @@ int main() {
 	
 	vector<Vec4f> lines_std1 = operation(path1, image1);
 	vector<Vec4f> lines_std2 = operation(path2, image2);
-
 
 
 	// Step2 搞出轮廓，完全不知道咋整，艹
@@ -178,6 +182,7 @@ bool canCluster(Line l1, Line l2) {
 		distanceBetweenLine(l1, l2) < th; // 距离较近
 }
 
+
 /**
  * 利用点到直线距离，计算两条直线的距离
  */
@@ -186,6 +191,7 @@ double distanceBetweenLine(Line l1, Line l2) {
 	double A = l2.k, B = -1, C = -(l2.k * l2.start.x - l2.start.y);
 	return abs(A * mid.x + B * mid.y + C) / sqrt(A * A + B * B);
 }
+
 
 /**
  * 判断两个点是否相近
@@ -265,7 +271,7 @@ vector<Line> connectLines(vector<Line> lines, int th, Mat dst) {
 					useless = false;
 					Line tmp = createConnectLine(line1, line2, type);
 					(*result).push_back(tmp);
-					line(dst, tmp.start, tmp.end, Scalar(0, 255, 0), 2, CV_AA);
+					//line(dst, tmp.start, tmp.end, Scalar(0, 0, 255), 3, CV_AA);
 					break;
 				}
 			}
@@ -283,27 +289,42 @@ vector<Line> connectLines(vector<Line> lines, int th, Mat dst) {
  * 直线聚合函数,聚合的原则：
  * 如果两个直线的起点和终点相似，则保留那条长直线
  * 由于直线数量不多，采用暴力求解的方法，时间复杂度O(n2)
-*/
+ */
 vector<Line> clusterLines(vector<Line> lines, int th, Mat dst) {
 	vector<Line> *result = new vector<Line>();
 	size_t length = lines.size();
 	
-	// TODO 写一个hashmap，动态地删除聚合后无用的直线
+	// TODO 写一个hashset，动态地删除聚合后无用的直线
+	hash_set<int> set;
+	hash_set<int>::iterator pos;
 
 	for (int i = 0; i < length; i++) {
+		
+		pos = set.find(i);
+		if (pos != set.end()) { // 如果存在
+			continue;
+		}
 		Line line1 = lines[i];
 		bool useless = true;
 		for (int j = i; j < length; j++) {
+
+			pos = set.find(j);
+			if (pos != set.end()) { // 如果存在
+				continue;
+			}
 			Line line2 = lines[j];
-			
+
 			if (canCluster(line1, line2)) { // 如果具备聚合条件
+				set.insert(i);
+				set.insert(j);
+
 				useless = false;
 				if (line1.length >= line2.length) {
 					(*result).push_back(line1);
-					line( dst, line1.start, line1.end, Scalar(255, 0, 0), 2, CV_AA);	
+					//line(dst, line1.start, line1.end, Scalar(0, 255, 0), 2, CV_AA);	
 				}else {
 					(*result).push_back(line2);
-					line( dst, line2.start, line2.end, Scalar(255, 0, 0), 2, CV_AA);	
+					//line(dst, line2.start, line2.end, Scalar(0, 255, 0), 2, CV_AA);	
 				}
 				break;
 			}
@@ -319,21 +340,36 @@ vector<Line> clusterLines(vector<Line> lines, int th, Mat dst) {
 }
 
 
+/**
+ * 取得topK的直线
+ */
+vector<Line> getTopK(vector<Line> lines, int K) {
+
+	// MinHeap heap(K);
+	MinHeap* heap = new MinHeap(K);
+
+	// 创建大顶堆
+	(*heap).createMinHeap(lines);
+	for (int i = K + 1; i< lines.size(); i++) {
+		(*heap).insert(lines[i]);
+	}
+	// (*heap).print();
+	lines = (*heap).getHeap();
+	delete heap;
+	return lines;
+}
 
 
-/*
-计算两组直线的匹配度
-输入：两个图像的两组直线 lines1，lines2
-算法步骤如下：
-1. 计算每组直线的斜率，计算斜率阈值TK、距离阈值TP
-2. 根据斜率、距离的差值是否满足阈值，找到最佳匹配直线对
-3. 计算每组中的直线与本组中的其他直线之间的夹角
-4. 计算夹角矩阵之间的相似度，并把这个相似度，作为直线的匹配度，返回
-
-TODO:
-1. 直线匹配时，存在一些短直线相互之间离得很近，并且方向角度相似，其实是一条直线，应当聚类
-2. 通过直线构造三种直线组合，利用直线组合还原高级特征，通过高级特征图匹配
-*/
+/**
+ * 计算两组直线的匹配度
+ * 输入：两个图像的两组直线 lines1，lines2
+ * 算法步骤如下：
+ * 1. 计算每组直线的斜率，计算斜率阈值TK、距离阈值TP
+ * 2. 根据斜率、距离的差值是否满足阈值，找到最佳匹配直线对
+ * 3. 计算每组中的直线与本组中的其他直线之间的夹角
+ * 4. 计算夹角矩阵之间的相似度，并把这个相似度，作为直线的匹配度，返回
+ * TODO: 通过直线构造三种直线组合，利用直线组合还原高级特征，通过高级特征图匹配
+ */
 double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArray m2) {
 
 	// Step1 创建直线
@@ -343,37 +379,41 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 	vector<Vec4f>().swap(lines1);
 	vector<Vec4f>().swap(lines2);
 
-	int threshold = 5;
+	int threshold = 7;
 	Mat dst1(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255, 255, 255));
 	Mat dst2(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255, 255, 255));
 
 	// Step2 删除较短的直线
-	lineSet1 = cleanShort(lineSet1);
+	// lineSet1 = cleanShort(lineSet1);
+	// lineSet2 = cleanShort(lineSet2);
 
 	// Step3 先进行直线的连接
     lineSet1 = connectLines(lineSet1, threshold, dst1);
+	lineSet2 = connectLines(lineSet2, threshold, dst2);
 
 	// Step4 再进行直线的聚合
 	lineSet1 = clusterLines(lineSet1, threshold, dst1); 
-	//lineSet2 = clusterLines(lineSet2, threshold, dst2);
+	lineSet2 = clusterLines(lineSet2, threshold, dst2);
 
 	size_t length1 = lineSet1.size();
 	size_t length2 = lineSet2.size();
 
-
-	line(dst1, Point(0, 0), Point(10, 0), Scalar(255, 0, 0), 3, CV_AA);
+	// line(dst1, Point(0, 0), Point(10, 0), Scalar(255, 0, 0), 3, CV_AA);
 
 	// 画出聚合后的图像
 	for (int i = 0; i < lineSet1.size(); i++) {
 		Line l = lineSet1[i];
 		line(dst1, l.start, l.end, Scalar(0, 0, 0), 1, CV_AA);
 	}
-	imshow("直线聚合后的图像1", dst1);
-	/*for (int i = 0; i < lineSet2.size(); i++) {
+	imshow("连接、聚合后的图像1", dst1);
+	for (int i = 0; i < lineSet2.size(); i++) {
 		Line l = lineSet2[i];
 		line(dst2, l.start, l.end, Scalar(0, 0, 0), 1, CV_AA);
 	}
-	imshow("直线聚合后的图像2", dst2);*/
+	imshow("连接、聚合后的图像2", dst2);
+
+	// TODO 提取顶部轮廓线，水平棱角线，垂直棱角线
+
 
 	return 0.0;
 }
@@ -420,9 +460,10 @@ double calculateMean(vector<vector<double>> m) {
 
 	vector<double> *mean = new vector<double>();
 	int p = 0;
-	for (int j = m[p].size() - 1; j >= 0; j--) {
+	size_t len = m[p].size();
+	for (size_t j = len - 1; j >= 0; j--) {
 		double count = 0;
-		for (int i = 0, k = j; i <= m[p].size() - 1; k--, i++) {
+		for (size_t i = 0, k = j; i <= len - 1; k--, i++) {
 			count += m[i][k];
 		}
 		count /= m.size();
@@ -431,12 +472,14 @@ double calculateMean(vector<vector<double>> m) {
 	}
 
 	double count = 0;
-	for (int i = 0; i < (*mean).size(); i++) {
+	len = (*mean).size();
+	for (int i = 0; i < len; i++) {
 		count += (*mean)[i];
 	}
-	count /= ((*mean).size() + 1);
+	count /= (len + 1);
 	return count;
 }
+
 
 double calculateCorr2(vector<vector<double>> m1,
 	vector<vector<double>> m2) {
@@ -446,11 +489,13 @@ double calculateCorr2(vector<vector<double>> m1,
 
 	//计算分子
 	double numerator = 0;
-	for (int i = 0; i < m1.size(); i++) {
-		for (int j = 0; j < m1[i].size(); j++) {
+	size_t len = m1.size();
+	for (size_t i = 0; i < len; i++) {
+		size_t len1 = m1[i].size();
+		for (size_t j = 0; j < len1; j++) {
 			numerator += (m1[i][j] - mean1) * (m2[i][j] - mean2);
 		}
-		for (int j = m1[i].size(); j <= m1.size(); j++) {
+		for (size_t j = len1; j <= len1; j++) {
 			numerator += mean1 * mean2;
 		}
 	}
@@ -458,12 +503,13 @@ double calculateCorr2(vector<vector<double>> m1,
 	//计算分母 sqrt(pow(x,2) + pow(y,2));
 	double d1 = 0;
 	double d2 = 0;
-	for (int i = 0; i < m1.size(); i++) {
-		for (int j = 0; j < m1[i].size(); j++) {
+	for (size_t i = 0; i < len; i++) {
+		size_t len1 = m1[i].size();
+		for (size_t j = 0; j < len1; j++) {
 			d1 += pow((m1[i][j] - mean1), 2);
 			d2 += pow((m2[i][j] - mean2), 2);
 		}
-		for (int j = m1[i].size(); j <= m1.size(); j++) {
+		for (size_t j = len1; j <= len; j++) {
 			d1 += pow(mean1, 2);
 			d2 += pow(mean2, 2);
 		}

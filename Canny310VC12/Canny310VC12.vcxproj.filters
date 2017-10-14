@@ -21,9 +21,15 @@
     <ClCompile Include="Line.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="MinHeap.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Line.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MinHeap.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
