@@ -1,9 +1,11 @@
 /*************************************************
+
 Copyright:bupt
 Author: lijialin 1040591521@qq.com
 Date:2017-10-14
 Description:写这段代码的时候，只有上帝和我知道它是干嘛的
             现在只有上帝知道
+
 **************************************************/
 
 #include <opencv2/opencv.hpp>
@@ -33,13 +35,12 @@ vector<Line> clusterLines(vector<Line> lines, int th, Mat dst); // 聚合直线
 vector<Line> getTopK(vector<Line> lines, int K);         // 取得topK的直线
 double lineDiff(vector<Line> line1, vector<Line> line2); // 计算两条直线的差距
 void drawLine(vector<Line> lineSet, Mat image, Scalar color, string name); // 在图像中画出直线
-double pointDistance(Point p1, Point p2);   // 计算两个点的距离
+double pointDistance(Point p1, Point p2);       // 计算两个点的距离
+vector<vector<Line>> makePair(vector<Line> lineSet1, 
+	vector<Line>lineSet2, int th);              // 两组直线进行配对
 double match(vector<Vec4f> lines1, vector<Vec4f> lines2, 
-	InputArray m1, InputArray m2);          // 计算两组直线的匹配度
-
-double averageK(vector<Line> LineSet);      // 计算平均斜率（用于计算TK）
-double getTP(InputArray m1, InputArray m2); // 计算TP:距离阈值
-double getAngle(double k1, double k2);      // 计算两条直线夹角
+	InputArray m1, InputArray m2);              // 计算两组直线的匹配度
+double getAngle(double k1, double k2);          // 计算两条直线夹角
 double calculateMean(vector<vector<double>> m); // 计算矩阵的相似度
 double calculateCorr2(vector<vector<double>> m1,
 	vector<vector<double>> m2);
@@ -114,13 +115,13 @@ int main() {
  * 返回检测后的直线
  */
 vector<Vec4f> operation(string path, Mat image) {
-	blur(image, image, Size(3, 3)); // 使用3x3内核来降噪
+	blur(image, image, Size(3, 3));  // 使用3x3内核来降噪
 	Canny(image, image, 50, 200, 3); // Apply canny edge
 
 	// Create and LSD detector with standard or no refinement.
 	// LSD_REFINE_NONE，没有改良的方式；
 	// LSD_REFINE_STD，标准改良方式，将带弧度的线（拱线）拆成多个可以逼近原线段的直线度；
-	// LSD_REFINE_ADV，进一步改良方式，计算出错误警告数量，通过增加精度，减少尺寸进一步精确直线。
+	// LSD_REFINE_ADV，进一步改良，计算出错误警告数量，减少尺寸进一步精确直线。
 	Ptr<LineSegmentDetector> ls = createLineSegmentDetector(LSD_REFINE_STD, 0.99);
 	double start = double(getTickCount());
 	vector<Vec4f> lines_std;
@@ -389,6 +390,7 @@ double lineDiff(Line line1, Line line2) {
 	return (line1.length - line2.length) * abs(line1.k - line2.k);
 }
 
+
 /**
  * 在图像中画出直线，仅测试时用
  */
@@ -399,6 +401,53 @@ void drawLine(vector<Line> lineSet, Mat image, Scalar color, string name) {
 		line(image, l.start, l.end, color, 1, CV_AA);
 	}
 	imshow(name, image);
+}
+
+
+/**
+ * 两个直线组配对
+ */
+vector<vector<Line>> makePair(vector<Line> lineSet1, vector<Line>lineSet2, int th) {
+	hash_set<int> set;
+	hash_set<int>::iterator pos;
+	vector<vector<Line>> pairSet;
+
+	size_t length1 = lineSet1.size();
+	size_t length2 = lineSet2.size();
+
+	for (int i = 0; i < length1; i++) {
+		Line line1 = lineSet1[i];
+		int bestFriendId = -1; // 最佳配对直线的id
+		double minDiff = MAX;  // 两条直线最小的差距
+		for (int j = 0; j < length2; j++) {
+			pos = set.find(j);
+			if (pos != set.end()) { // 如果存在
+				continue;
+			}
+			Line line2 = lineSet2[j];
+			// 如果直线1,2的斜率相近，长度相近，位置相近，则配对
+			// 这里偷个懒，直接用canCluster()函数判断，如果能聚合，也就能配对
+			if (canCluster(line1, line2, th * 2)) {
+				double diff = lineDiff(line1, line2);
+				if (diff < minDiff) {
+					minDiff = diff;
+					bestFriendId = j;
+				}
+			}
+		}
+		// 找到最佳配对的直线后，存储到二维向量中
+		if (bestFriendId != -1) {
+			set.insert(bestFriendId);
+			vector<Line> pair;
+			Line bestFriendLine = lineSet2[bestFriendId];
+			pair.push_back(line1);
+			pair.push_back(bestFriendLine);
+			pairSet.push_back(pair);
+		}
+	}
+	vector<Line>().swap(lineSet1); // 回收内存
+	vector<Line>().swap(lineSet2);
+	return pairSet;
 }
 
 
@@ -417,81 +466,41 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 	// Step1 创建直线
 	vector<Line> lineSet1 = createLine(lines1);
 	vector<Line> lineSet2 = createLine(lines2);
-	// 回收内存
-	vector<Vec4f>().swap(lines1);
+	
+	vector<Vec4f>().swap(lines1); // 回收内存
 	vector<Vec4f>().swap(lines2);
 
 	int threshold = 7; // 阈值【5-10】
-	Mat dst1(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255, 255, 255));
-	Mat dst2(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255, 255, 255));
+	Mat dst1(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255,255,255));
+	Mat dst2(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255,255,255));
 
-	// Step2 删除较短的直线
+	// Step2 删除较短的直线 (可选)
 	// lineSet1 = cleanShort(lineSet1);
 	// lineSet2 = cleanShort(lineSet2);
 
 	// Step3 先进行直线的连接，然后聚合直线
     lineSet1 = connectLines(lineSet1, threshold, dst1); // 连接
 	lineSet2 = connectLines(lineSet2, threshold, dst2);
+
 	lineSet1 = clusterLines(lineSet1, threshold, dst1); // 聚合
 	lineSet2 = clusterLines(lineSet2, threshold, dst2);
-
+	
 	size_t length1 = lineSet1.size();
 	size_t length2 = lineSet2.size();
 
-	// 画出聚合后的图像
+	// 画出聚合后的图像，便于分析
 	// line(dst1, Point(0, 0), Point(10, 0), Scalar(255, 0, 0), 3, CV_AA); // 测试阈值
 	drawLine(lineSet1, dst1, Scalar(0,0,0), "连接、聚合后的图像1");
 	drawLine(lineSet2, dst2, Scalar(0,0,0), "连接、聚合后的图像2");
 
 	// Step4. 从第一张图中选择一条直线，然后遍历第二张图，找到最佳的配对直线
-	hash_set<int> set;
-	hash_set<int>::iterator pos;
-	vector<vector<Line>> pairSet;
-
-	for (int i = 0; i < length1; i++) {
-		Line line1 = lineSet1[i];
-		int bestFriendId = -1; // 最佳配对直线的id
-		double minDiff = MAX;  // 两条直线最小的差距
-
-		for (int j = 0; j < length2; j++) {			
-			pos = set.find(j);
-			if (pos != set.end()) { // 如果存在
-				continue;
-			}
-			Line line2 = lineSet2[j];
-			// 如果直线1,2的斜率相近，长度相近，位置相近，则配对
-			// 这里偷个懒，直接用canCluster()函数判断，如果能聚合，也就能配对
-			if (canCluster(line1, line2, threshold * 2)) {
-				double diff = lineDiff(line1, line2);
-				if (diff < minDiff) {
-					minDiff = diff;
-					bestFriendId = j;					
-				}
-			}
-
-		}
-
-		// 找到最佳配对的直线后，存储到二维向量中
-		if (bestFriendId != -1) {
-			set.insert(bestFriendId);
-			vector<Line> pair;
-			Line bestFriendLine = lineSet2[bestFriendId];
-			pair.push_back(line1);
-			pair.push_back(bestFriendLine);
-			pairSet.push_back(pair);
-		}
-
-	}
-
-	vector<Line>().swap(lineSet1); // 回收内存
-	vector<Line>().swap(lineSet2);
-
+	vector<vector<Line>> pairSet = makePair(lineSet1, lineSet2, threshold);
+	size_t pairLen = pairSet.size(); // 有多少对直线
+	
 	// 画出配对后的图像，便于分析
-	Mat dst3(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255, 255, 255));
-	Mat dst4(m2.getMat().rows, m2.getMat().cols, CV_8UC3, Scalar(255, 255, 255));
-	size_t len = pairSet.size();
-	cout << "配对的直线有多少条：" << len << endl;
-	for (int i = 0; i < len; i++) {
+	Mat dst3(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255,255,255));
+	Mat dst4(m2.getMat().rows, m2.getMat().cols, CV_8UC3, Scalar(255,255,255));	
+	for (int i = 0; i < pairLen; i++) {
 		int b = rand() % 255; //产生三个随机数
 		int g = rand() % 255;
 		int r = rand() % 255;
@@ -502,34 +511,30 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 	imshow("配对后的图像1", dst3);
 	imshow("配对后的图像2", dst4);
 
-	// TODO 配对以后，计算匹配度
+	// Step 5. 计算直线与其他直线的夹角，构造夹角矩阵
+	vector<vector<double>> angleList1, angleList2;
+	for (int i = 0; i < pairLen; i++) {
+		vector<Line> v1 = pairSet[i];
+		vector<double> angle1, angle2;
 
-	return 0.0;
-}
-
-
-/**
- * 计算平均斜率（用于计算TK）
- */
-double averageK(vector<Line> LineSet) {
-	double avg = 0;
-	int count = 0;
-	for (int i = 0; i < LineSet.size(); i++) {
-		if (LineSet[i].k != 100000) {
-			avg += LineSet[i].k;
-			count++;
+		for (int j = i + 1; j < pairLen; j++) {
+			vector<Line> v2 = pairSet[j];
+			angle1.push_back(getAngle(v1[0].k, v2[0].k));
+			angle2.push_back(getAngle(v1[1].k, v2[1].k));
 		}
+		angleList1.push_back(angle1);
+		angleList2.push_back(angle2);
+
+		vector<double>().swap(angle1); // 回收内存
+		vector<double>().swap(angle2);
 	}
-	avg /= count;
-	return avg;
-}
 
 
-/**
- * 计算TP:距离阈值
- */
-double getTP(InputArray m1, InputArray m2) {
-	return (m1.getMat().rows + m2.getMat().rows) / 6;
+	// 然后计算夹角矩阵的相似度
+	double rate = calculateCorr2(angleList1, angleList2);
+	// rate *= pairLen / length1;
+
+	return rate;
 }
 
 
@@ -546,32 +551,25 @@ double getAngle(double k1, double k2) {
  * matlab中的corr2()函数，好麻烦
  */
 double calculateMean(vector<vector<double>> m) {
-
-	vector<double> *mean = new vector<double>();
-	int p = 0;
-	size_t len = m[p].size();
-	for (size_t j = len - 1; j >= 0; j--) {
-		double count = 0;
-		for (size_t i = 0, k = j; i <= len - 1; k--, i++) {
-			count += m[i][k];
+	double sum = 0.0;
+	int num = 0;
+	size_t rows = m.size();
+	for (int i = 0; i < rows; i++) {
+		size_t cols = m[i].size();
+		for (int j = 0; j < cols; j++) {
+			sum += m[i][j];
+			num++;
 		}
-		count /= m.size();
-		(*mean).push_back(count);
-		p++;
 	}
-
-	double count = 0;
-	len = (*mean).size();
-	for (int i = 0; i < len; i++) {
-		count += (*mean)[i];
-	}
-	count /= (len + 1);
-	return count;
+	return sum / num;
 }
 
 
-double calculateCorr2(vector<vector<double>> m1,
-	vector<vector<double>> m2) {
+/**
+ * corr2函数，计算两个矩阵的相关系数
+ * 计算结果被归一化在[-1,1]区间内，数值越大说明相似度越高
+ */
+double calculateCorr2(vector<vector<double>> m1, vector<vector<double>> m2) {
 
 	double mean1 = calculateMean(m1);
 	double mean2 = calculateMean(m2);
@@ -607,4 +605,5 @@ double calculateCorr2(vector<vector<double>> m1,
 
 	if (numerator == 0) return 0.0;
 	return numerator / denominator;
+
 }
