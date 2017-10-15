@@ -74,37 +74,6 @@ int main() {
 	vector<Vec4f>().swap(lines_std1);
 	vector<Vec4f>().swap(lines_std2);
 
-	// Step3 假设求出了轮廓，计算匹配度
-	
-	//path1 = "images/test3_c.jpg";
-	//path2 = "images/test4_c.jpg";
-
-	//Mat image1 = imread(path1, IMREAD_GRAYSCALE);
-	//Mat image2 = imread(path2, IMREAD_GRAYSCALE);
-
-	//image1 = 255 - image1; // 反色
-	//image2 = 255 - image2;
-
-	//imshow("1", image1);
-	//imshow("2", image2);
-	//
-	//Mat image1_copy = imread(path1);
-	//Mat image2_copy = imread(path2);
-
-	//vector<vector<Point>> contours1, contours2;
-	//findContours(image1, contours1, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);//最外层轮廓  
-	//findContours(image2, contours2, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);//最外层轮廓
-
-	//drawContours(image1_copy, contours1, -1, Scalar(0, 255, 0), 2, 8);
-	//drawContours(image2_copy, contours2, -1, Scalar(0, 255, 0), 2, 8);
-
-	//imshow("轮廓1", image1_copy);
-	//imshow("轮廓2", image2_copy);
-
-	////返回此轮廓与模版轮廓之间的相似度,a0越小越相似  
-	//double a0 = matchShapes(contours1[0], contours2[0], CV_CONTOURS_MATCH_I1, 0);
-	//cout << a0 << endl;
-
 	waitKey(0);
 	return 0;
 }
