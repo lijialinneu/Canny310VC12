@@ -112,7 +112,8 @@ int main() {
 
 /**
  * 图像滤波、边缘检测、直线检测操作
- * 返回检测后的直线
+ * 输入：图片路径（用于命名）和图片
+ * 输出：返回检测后的直线
  */
 vector<Vec4f> operation(string path, Mat image) {
 	blur(image, image, Size(3, 3));  // 使用3x3内核来降噪
@@ -145,6 +146,8 @@ vector<Vec4f> operation(string path, Mat image) {
 /**
  * 对向量中的每一条直线构造Line对象
  * 返回一个向量集合，集合里的元素是Line对象
+ * 输入：包含Vec4f类型直线的向量
+ * 输出：包含Line对象的向量
  */
 vector<Line> createLine(vector<Vec4f> lines) {
 	vector<Line> LineSet;
@@ -161,6 +164,8 @@ vector<Line> createLine(vector<Vec4f> lines) {
 /**
  * 过滤短小直线
  * TODO 过滤孤立的直线
+ * 输入：包含Line对象的向量
+ * 输出：清除短小直线后的Line对象向量
  */
 vector<Line> cleanShort(vector<Line> lines) {
 	vector<Line> *result = new vector<Line>();
@@ -190,6 +195,8 @@ vector<Line> cleanShort(vector<Line> lines) {
 /**
  * 判断两条直线是否具备聚合条件
  * 判断规则：斜率相近，直线间距相近，则可以聚合
+ * 输入：两条直线（Line），和阈值
+ * 输出：bool型，true表示两条直线可以聚合，false表示不能聚合
  */
 bool canCluster(Line l1, Line l2, int th) {
 	// double th = (l1.length + l2.length) / 2.0;
@@ -201,6 +208,8 @@ bool canCluster(Line l1, Line l2, int th) {
 
 /**
  * 计算两个点的距离
+ * 输入：两个点（Point类型的对象）
+ * 输出：两个点之间的距离，double类型
  */
 double pointDistance(Point p1, Point p2) {
 	return abs(p1.x - p2.x) + abs(p1.y - p2.y);
@@ -210,6 +219,8 @@ double pointDistance(Point p1, Point p2) {
 /**
  * 原方法：利用点到直线距离，估算两条直线的距离
  * 改进方法：直线间中点的距离
+ * 输入：两条直线（Line对象）
+ * 输出：直线之间的距离， double类型
  */
 double distanceBetweenLine(Line l1, Line l2) {
 	/*Point mid = l1.mid;
@@ -222,6 +233,8 @@ double distanceBetweenLine(Line l1, Line l2) {
 /**
  * 判断两个点是否相近
  * x，y间距均小于阈值
+ * 输入：两个点（Point对象），阈值double类型
+ * 输出：bool类型，true表示两个点离得很近，false表示离得远
  */
 bool isPointNear(Point p1, Point p2, double th){
 	return (abs(p1.x - p2.x) < th && abs(p1.y - p2.y) < th);
@@ -230,11 +243,13 @@ bool isPointNear(Point p1, Point p2, double th){
 
 /**
  * 判断直线首尾是否相接，并返回相连的类型
- * 0：不相连
- * 1：l1的end   和 l2的start   相连
- * 2：l1的end   和 l2的end     相连
- * 3：l1的start 和 l2的start   相连
- * 4：l1的start 和 l2的end     相连
+ * 输入：两条直线（Line对象），阈值 int
+ * 输出：一个int型，表示的类型如下：
+ *    0：不相连
+ *    1：l1的end   和 l2的start   相连
+ *    2：l1的end   和 l2的end     相连
+ *    3：l1的start 和 l2的start   相连
+ *    4：l1的start 和 l2的end     相连
 */
 int isConnect(Line l1, Line l2, int th) {
 	double len = max(l1.length, l2.length);
@@ -254,6 +269,8 @@ int isConnect(Line l1, Line l2, int th) {
 
 /**
  * 产生首尾相连的长直线
+ * 输入：两条直线（Line对象），类型 int
+ * 输出：一条连接后的直线（Line对象）
  */
 Line createConnectLine(Line l1, Line l2, int type) {	
 	Line l = Line();
@@ -277,12 +294,11 @@ Line createConnectLine(Line l1, Line l2, int type) {
 
 
 /**
- * 直线连接，如果两个直线首尾能相接
- * 则连接成一条直线
- * 第三个参数的作用就是测试的时候画图
+ * 直线连接，如果两个直线首尾能相接，则连接成一条直线
+ * 输入：包含Line对象的向量，阈值，矩阵Mat（作用就是测试的时候画图用）
+ * 输出：包含Line对象的向量
  */
 vector<Line> connectLines(vector<Line> lines, int th, Mat dst) {
-
 	vector<Line> *result = new vector<Line>();
 	size_t length = lines.size();
 
@@ -315,6 +331,8 @@ vector<Line> connectLines(vector<Line> lines, int th, Mat dst) {
  * 直线聚合函数,聚合的原则：
  * 如果两个直线的起点和终点相似，则保留那条长直线
  * 由于直线数量不多，采用暴力求解的方法，时间复杂度O(n2)
+ * 输入：包含Line对象的向量，阈值int，矩阵Mat（作用就是测试的时候画图用）
+ * 输出：包含Line对象的向量
  */
 vector<Line> clusterLines(vector<Line> lines, int th, Mat dst) {
 	vector<Line> *result = new vector<Line>();
@@ -352,16 +370,16 @@ vector<Line> clusterLines(vector<Line> lines, int th, Mat dst) {
 	    if (useless) {
 			(*result).push_back(line1);
 		}
-		
 	}
-
 	vector<Line>().swap(lines);
 	return *result;
 }
 
 
 /**
- * 取得topK的直线
+ * 按长度取得topK的直线（这个函数暂时用不到）
+ * 输入：包含Line对象的向量，TopK的K
+ * 输出：包含Line对象的向量，表示前K条直线
  */
 vector<Line> getTopK(vector<Line> lines, int K) {
 
@@ -385,6 +403,8 @@ vector<Line> getTopK(vector<Line> lines, int K) {
  *  - 计算长度差距
  *  - 计算斜率的差距
  *  返回：长度差距 * 斜率差距
+ * 输入：两条直线（Line对象）
+ * 输出：直线之间的差距，double类型
  */
 double lineDiff(Line line1, Line line2) {
 	return (line1.length - line2.length) * abs(line1.k - line2.k);
@@ -393,6 +413,8 @@ double lineDiff(Line line1, Line line2) {
 
 /**
  * 在图像中画出直线，仅测试时用
+ * 输入：包含Line对象的向量，表示直线组；Mat矩阵，颜色Scalar类型，窗口名字
+ * 输出：void
  */
 void drawLine(vector<Line> lineSet, Mat image, Scalar color, string name) {
 	size_t len = lineSet.size();
@@ -405,13 +427,14 @@ void drawLine(vector<Line> lineSet, Mat image, Scalar color, string name) {
 
 
 /**
- * 两个直线组配对
+ * 两个直线组中的直线，进行两两配对，或者说匹配
+ * 输入：两组直线，包含Line对象的向量，阈值 int
+ * 输出：一个n*2的二维向量，n表示匹配的对儿数
  */
 vector<vector<Line>> makePair(vector<Line> lineSet1, vector<Line>lineSet2, int th) {
 	hash_set<int> set;
 	hash_set<int>::iterator pos;
 	vector<vector<Line>> pairSet;
-
 	size_t length1 = lineSet1.size();
 	size_t length2 = lineSet2.size();
 
@@ -454,6 +477,8 @@ vector<vector<Line>> makePair(vector<Line> lineSet1, vector<Line>lineSet2, int t
 /**
  * 计算两组直线的匹配度
  * 输入：两个图像的两组直线 lines1，lines2
+ * 输出：匹配度，double类型
+ *
  * 算法步骤如下：
  * 1. 计算每组直线的斜率，计算斜率阈值TK、距离阈值TP
  * 2. 根据斜率、距离的差值是否满足阈值，找到最佳匹配直线对
@@ -532,7 +557,7 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 
 	// 然后计算夹角矩阵的相似度
 	double rate = calculateCorr2(angleList1, angleList2);
-	// rate *= pairLen / length1;
+	// rate *= (double) pairLen / length1;
 
 	return rate;
 }
@@ -540,6 +565,8 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 
 /**
  * 计算两条直线夹角
+ * 输入：斜率k1和k2，double类型
+ * 输出：反正切角度，double类型
  */
 double getAngle(double k1, double k2) {
 	return atan(abs(k2 - k1) / (1 + k1 * k2));
@@ -549,6 +576,8 @@ double getAngle(double k1, double k2) {
 /**
  * 计算两个矩阵的相似度
  * matlab中的corr2()函数，好麻烦
+ * 输入：二维向量
+ * 输出：二维向量的均值
  */
 double calculateMean(vector<vector<double>> m) {
 	double sum = 0.0;
@@ -567,7 +596,9 @@ double calculateMean(vector<vector<double>> m) {
 
 /**
  * corr2函数，计算两个矩阵的相关系数
- * 计算结果被归一化在[-1,1]区间内，数值越大说明相似度越高
+ * 计算结果被归一化在[0,1]区间内，数值越大说明相似度越高
+ * 输入：两个二维向量
+ * 输出：它们的相关系数，double类型
  */
 double calculateCorr2(vector<vector<double>> m1, vector<vector<double>> m2) {
 
@@ -607,3 +638,4 @@ double calculateCorr2(vector<vector<double>> m1, vector<vector<double>> m2) {
 	return numerator / denominator;
 
 }
+

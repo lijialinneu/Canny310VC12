@@ -18,7 +18,7 @@ class MinHeap
 {
 private:
 	int maxsize; // 堆的大小
-	void filterDown(int begin); // 向上调整堆
+	void filterDown(int begin); // 向下调整堆
 	vector<Line> arr;
 
 public:
