@@ -24,6 +24,7 @@ using namespace std;
 
 /***************************** 函数声明部分 start ***********************************/
 
+double solution(string path1, string path2);       // 程序的入口，参数为两个图片的路径 
 vector<Vec4f> operation(string path, Mat image); // 对输入的图像进行直线检测
 vector<Line> createLine(vector<Vec4f> lines);    // 构造直线
 bool canCluster(Line l1, Line l2, int th);       // 判断能否聚合或连接
@@ -51,13 +52,58 @@ double calculateCorr2(vector<vector<double>> m1,
 
 int main() {
 
-	// Step1 提取直线
-	string path1 = "images/test3.jpg";
-	string path2 = "images/test4.jpg";
+	// 测试1，测试相似图片间的相似度
+	string dir = "images/";
+	string arr[] = { 
+		"image0.jpg", "image1.jpg",
+		"image2.jpg", "image3.jpg",
+		"image4.jpg", "image5.jpg",
+		"image6.jpg", "image7.jpg",
+		"image8.jpg", "image9.jpg",
+		"image10.jpg", "image11.jpg",
+		"image12.jpg", "image13.jpg",
+		"image14.jpg", "image15.jpg",
+		"image16.jpg", "image17.jpg",
+		"image18.jpg", "image19.jpg",
+		"image20.jpg", "image21.jpg",
+		"image22.jpg", "image23.jpg",
+	}; // 24个测试用例
 
+    // 两两进行测试
+	for (int i = 0; i <= 22; i += 2) {
+		string path1 = dir + arr[i];
+		string path2 = dir + arr[i+1];
+		double rate = solution(path1, path2);
+		cout << arr[i] << "与" << arr[i + 1] << "的相似度是" << rate << endl;
+	}
+
+	system("pause");
+	waitKey(0);
+	return 0;
+}
+
+
+/**
+ * 程序的入口
+ * 输入：两个图片的路径string类型
+ * 输出：匹配度double类型
+ */
+double solution(string path1, string path2) {
+
+	// Step1 提取直线
 	Mat image1 = imread(path1, IMREAD_GRAYSCALE);
 	Mat image2 = imread(path2, IMREAD_GRAYSCALE);
-	
+
+	// 检查是否有图片
+	if (image1.empty()) {
+		cout << "Cannot read image file: " <<  path1 << endl;
+		return -1;
+	}
+	if (image2.empty()) {
+		cout << "Cannot read image file: " << path2 << endl;
+		return -1;
+	}
+
 	// 图像大小变化
 	double height = (double)image1.rows / image1.cols * image2.cols;
 	resize(image1, image1, Size(image2.cols, height), 0, 0, CV_INTER_LINEAR);
@@ -70,13 +116,12 @@ int main() {
 	// 直线的聚类，延长，求出垂直、水平棱角线
 
 	double rate = match(lines_std1, lines_std2, image1, image2);
-	cout << "匹配度是：" << rate << endl;
+	//cout << "匹配度是：" << rate << endl;
 
 	vector<Vec4f>().swap(lines_std1);
 	vector<Vec4f>().swap(lines_std2);
 
-	waitKey(0);
-	return 0;
+	return rate;
 }
 
 
@@ -90,8 +135,7 @@ vector<Vec4f> operation(string path, Mat image) {
 	// Canny(image, image, 50, 200, 3); // Apply canny edge
 	myCanny(image, image, 50, 200, 3);
 
-
-	imshow(path + "边缘图像", image);
+	// imshow(path + "边缘图像", image);
 
 	// Create and LSD detector with standard or no refinement.
 	// LSD_REFINE_NONE，没有改良的方式；
@@ -488,26 +532,26 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 
 	// 画出聚合后的图像，便于分析
 	// line(dst1, Point(0, 0), Point(10, 0), Scalar(255, 0, 0), 3, CV_AA); // 测试阈值
-	drawLine(lineSet1, dst1, Scalar(0,0,0), "连接、聚合后的图像1");
-	drawLine(lineSet2, dst2, Scalar(0,0,0), "连接、聚合后的图像2");
+	// drawLine(lineSet1, dst1, Scalar(0,0,0), "连接、聚合后的图像1");
+	// drawLine(lineSet2, dst2, Scalar(0,0,0), "连接、聚合后的图像2");
 
 	// Step4. 从第一张图中选择一条直线，然后遍历第二张图，找到最佳的配对直线
 	vector<vector<Line>> pairSet = makePair(lineSet1, lineSet2, threshold);
 	size_t pairLen = pairSet.size(); // 有多少对直线
 	
 	// 画出配对后的图像，便于分析
-	Mat dst3(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255,255,255));
-	Mat dst4(m2.getMat().rows, m2.getMat().cols, CV_8UC3, Scalar(255,255,255));	
-	for (int i = 0; i < pairLen; i++) {
-		int b = rand() % 255; //产生三个随机数
-		int g = rand() % 255;
-		int r = rand() % 255;
-		vector<Line> v = pairSet[i];
-		line(dst3, v[0].start, v[0].end, Scalar(b, g, r), 2, CV_AA);
-		line(dst4, v[1].start, v[1].end, Scalar(b, g, r), 2, CV_AA);
-	}
-	imshow("配对后的图像1", dst3);
-	imshow("配对后的图像2", dst4);
+	//Mat dst3(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255,255,255));
+	//Mat dst4(m2.getMat().rows, m2.getMat().cols, CV_8UC3, Scalar(255,255,255));	
+	//for (int i = 0; i < pairLen; i++) {
+	//	int b = rand() % 255; //产生三个随机数
+	//	int g = rand() % 255;
+	//	int r = rand() % 255;
+	//	vector<Line> v = pairSet[i];
+	//	line(dst3, v[0].start, v[0].end, Scalar(b, g, r), 2, CV_AA);
+	//	line(dst4, v[1].start, v[1].end, Scalar(b, g, r), 2, CV_AA);
+	//}
+	//imshow("配对后的图像1", dst3);
+	//imshow("配对后的图像2", dst4);
 
 	// Step 5. 计算直线与其他直线的夹角，构造夹角矩阵
 	vector<vector<double>> angleList1, angleList2;
