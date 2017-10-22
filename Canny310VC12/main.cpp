@@ -13,7 +13,8 @@ Description:写这段代码的时候，只有上帝和我知道它是干嘛的
 #include <time.h>
 #include <hash_set>
 #include "Line.h"
-#include"MinHeap.h"
+#include "MinHeap.h"
+#include "canny.h"
 
 #define MAX 1.7976931348623158e+308
 
@@ -86,14 +87,17 @@ int main() {
  */
 vector<Vec4f> operation(string path, Mat image) {
 	blur(image, image, Size(3, 3));  // 使用3x3内核来降噪
-	Canny(image, image, 50, 200, 3); // Apply canny edge
+	// Canny(image, image, 50, 200, 3); // Apply canny edge
+	myCanny(image, image, 50, 200, 3);
+
+
+	imshow(path + "边缘图像", image);
 
 	// Create and LSD detector with standard or no refinement.
 	// LSD_REFINE_NONE，没有改良的方式；
 	// LSD_REFINE_STD，标准改良方式，将带弧度的线（拱线）拆成多个可以逼近原线段的直线度；
 	// LSD_REFINE_ADV，进一步改良，计算出错误警告数量，减少尺寸进一步精确直线。
 	Ptr<LineSegmentDetector> ls = createLineSegmentDetector(LSD_REFINE_STD, 0.99);
-	double start = double(getTickCount());
 	vector<Vec4f> lines_std;
 
 	// Detect the lines
@@ -371,7 +375,7 @@ vector<Line> getTopK(vector<Line> lines, int K) {
  * 计算两条直线的差距，算法如下：
  *  - 计算长度差距
  *  - 计算斜率的差距
- *  返回：长度差距 * 斜率差距
+ * 返回：长度差距 * 斜率差距
  * 输入：两条直线（Line对象）
  * 输出：直线之间的差距，double类型
  */
@@ -464,13 +468,13 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 	vector<Vec4f>().swap(lines1); // 回收内存
 	vector<Vec4f>().swap(lines2);
 
-	int threshold = 7; // 阈值【5-10】
+	int threshold = 8; // 阈值【5-10】
 	Mat dst1(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255,255,255));
 	Mat dst2(m1.getMat().rows, m1.getMat().cols, CV_8UC3, Scalar(255,255,255));
 
 	// Step2 删除较短的直线 (可选)
-	// lineSet1 = cleanShort(lineSet1);
-	// lineSet2 = cleanShort(lineSet2);
+	lineSet1 = cleanShort(lineSet1);
+	lineSet2 = cleanShort(lineSet2);
 
 	// Step3 先进行直线的连接，然后聚合直线
     lineSet1 = connectLines(lineSet1, threshold, dst1); // 连接
@@ -522,7 +526,6 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 		vector<double>().swap(angle1); // 回收内存
 		vector<double>().swap(angle2);
 	}
-
 
 	// 然后计算夹角矩阵的相似度
 	double rate = calculateCorr2(angleList1, angleList2);
