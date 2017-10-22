@@ -52,8 +52,10 @@ double calculateCorr2(vector<vector<double>> m1,
 
 int main() {
 
-	// 测试1，测试相似图片间的相似度
-	string dir = "images/";
+	string dir = "images/"; // 图片的目录
+
+	// 测试1，肉眼相似图片间的相似度
+	cout << "第一组测试" << endl;
 	string arr[] = { 
 		"image0.jpg", "image1.jpg",
 		"image2.jpg", "image3.jpg",
@@ -76,8 +78,45 @@ int main() {
 		double rate = solution(path1, path2);
 		cout << arr[i] << "与" << arr[i + 1] << "的相似度是" << rate << endl;
 	}
+	cout << endl;
 
-	system("pause");
+
+	// 测试2，肉眼不相似图片间的相似度
+	cout << "第二组测试" << endl;
+	string arr1[] = {
+		"image0.jpg", "image2.jpg",
+		"image1.jpg", "image4.jpg",
+		"image0.jpg", "image4.jpg",
+		"image1.jpg", "image10.jpg",
+		"image0.jpg", "image14.jpg",
+		"image14.jpg", "image18.jpg",
+		"image4.jpg", "image20.jpg",
+		"image2.jpg", "image22.jpg",
+	}; // 8个测试用例
+
+	for (int i = 0; i <= 7; i += 2) {
+		string path1 = dir + arr1[i];
+		string path2 = dir + arr1[i + 1];
+		double rate = solution(path1, path2);
+		cout << arr1[i] << "与" << arr1[i + 1] << "的相似度是" << rate << endl;
+	}
+	cout << endl;
+
+
+	// 测试3，完全随机测试
+	cout << "第三组测试" << endl;
+	for (int i = 0; i <= 23; i++) {
+		string path1 = dir + arr[i];
+		int j = rand() % 23;
+		string path2 = dir + arr[j];
+		double rate = solution(path1, path2);
+		cout << arr[i] << "与" << arr[j] << "的相似度是" << rate << endl;
+	}
+	cout << endl;
+
+
+
+	system("pause"); // 暂停
 	waitKey(0);
 	return 0;
 }
