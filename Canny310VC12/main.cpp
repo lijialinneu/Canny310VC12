@@ -54,9 +54,12 @@ int main() {
 
 	string dir = "images/"; // 图片的目录
 
+	
+
 	// 测试1，肉眼相似图片间的相似度
 	cout << "第一组测试" << endl;
 	string arr[] = { 
+		"image0.jpg", "image0.jpg",
 		"image0.jpg", "image1.jpg",
 		"image2.jpg", "image3.jpg",
 		"image4.jpg", "image5.jpg",
@@ -69,14 +72,13 @@ int main() {
 		"image18.jpg", "image19.jpg",
 		"image20.jpg", "image21.jpg",
 		"image22.jpg", "image23.jpg",
-	}; // 24个测试用例
+	}; // 25个测试用例
 
     // 两两进行测试
-	for (int i = 0; i <= 22; i += 2) {
+	for (int i = 0; i <= 24; i += 2) {
 		string path1 = dir + arr[i];
 		string path2 = dir + arr[i+1];
 		double rate = solution(path1, path2);
-		cout << arr[i] << "与" << arr[i + 1] << "的相似度是" << rate << endl;
 	}
 	cout << endl;
 
@@ -98,7 +100,6 @@ int main() {
 		string path1 = dir + arr1[i];
 		string path2 = dir + arr1[i + 1];
 		double rate = solution(path1, path2);
-		cout << arr1[i] << "与" << arr1[i + 1] << "的相似度是" << rate << endl;
 	}
 	cout << endl;
 
@@ -110,14 +111,17 @@ int main() {
 		int j = rand() % 23;
 		string path2 = dir + arr[j];
 		double rate = solution(path1, path2);
-		cout << arr[i] << "与" << arr[j] << "的相似度是" << rate << endl;
 	}
 	cout << endl;
 
 
+	//string path1 = dir + "image0.jpg";
+	//string path2 = dir + "image1.jpg";
+	//double rate = solution(path1, path2);
 
-	system("pause"); // 暂停
+	
 	waitKey(0);
+	system("pause"); // 暂停
 	return 0;
 }
 
@@ -128,6 +132,11 @@ int main() {
  * 输出：匹配度double类型
  */
 double solution(string path1, string path2) {
+
+	clock_t start, finish;// 程序计时
+	double totaltime;
+	start = clock();
+
 
 	// Step1 提取直线
 	Mat image1 = imread(path1, IMREAD_GRAYSCALE);
@@ -147,6 +156,12 @@ double solution(string path1, string path2) {
 	double height = (double)image1.rows / image1.cols * image2.cols;
 	resize(image1, image1, Size(image2.cols, height), 0, 0, CV_INTER_LINEAR);
 
+	// 显示原始图像
+	// Mat image3 = imread(path2);
+	// imwrite(path1 + "原始图像.jpg", image1);
+	// imwrite(path2 + "原始图像.jpg", image3);
+
+
 	vector<Vec4f> lines_std1 = operation(path1, image1);
 	vector<Vec4f> lines_std2 = operation(path2, image2);
 
@@ -160,6 +175,9 @@ double solution(string path1, string path2) {
 	vector<Vec4f>().swap(lines_std1);
 	vector<Vec4f>().swap(lines_std2);
 
+	finish = clock();
+	totaltime = (double)(finish - start) / CLOCKS_PER_SEC;
+	cout << path1 << "与" << path2 << "的相似度是" << rate << " 用时" << totaltime << "秒" << endl;
 	return rate;
 }
 
@@ -172,9 +190,10 @@ double solution(string path1, string path2) {
 vector<Vec4f> operation(string path, Mat image) {
 	blur(image, image, Size(3, 3));  // 使用3x3内核来降噪
 	// Canny(image, image, 50, 200, 3); // Apply canny edge
+	
 	myCanny(image, image, 50, 200, 3);
-
-	// imshow(path + "边缘图像", image);
+	// imwrite(path + "(50,200)边缘检测结果图.jpg", image);
+	// imshow(path+"边缘检测", image);
 
 	// Create and LSD detector with standard or no refinement.
 	// LSD_REFINE_NONE，没有改良的方式；
@@ -192,8 +211,9 @@ vector<Vec4f> operation(string path, Mat image) {
 	//Mat only_lines(image.size(), image.type());
 	//ls->drawSegments(drawnLines, lines_std);
 	//ls->drawSegments(only_lines, lines_std);
-	//imshow(path, drawnLines);
-	//imshow(path, only_lines);
+	// imshow(path, drawnLines);
+    // imshow(path, only_lines);
+	// imwrite(path + "直线提取.jpg", only_lines);
 
 	return lines_std;
 }
@@ -463,7 +483,7 @@ vector<Line> getTopK(vector<Line> lines, int K) {
  * 输出：直线之间的差距，double类型
  */
 double lineDiff(Line line1, Line line2) {
-	return (line1.length - line2.length) * abs(line1.k - line2.k);
+	return abs(line1.length - line2.length) * abs(line1.k - line2.k);
 }
 
 
@@ -571,8 +591,12 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 
 	// 画出聚合后的图像，便于分析
 	// line(dst1, Point(0, 0), Point(10, 0), Scalar(255, 0, 0), 3, CV_AA); // 测试阈值
-	// drawLine(lineSet1, dst1, Scalar(0,0,0), "连接、聚合后的图像1");
-	// drawLine(lineSet2, dst2, Scalar(0,0,0), "连接、聚合后的图像2");
+	//drawLine(lineSet1, dst1, Scalar(0,0,0), "连接、聚合后的图像1");
+	//drawLine(lineSet2, dst2, Scalar(0,0,0), "连接、聚合后的图像2");
+
+	//imwrite("连接聚合后的图像1.jpg", dst1);
+	//imwrite("连接聚合后的图像2.jpg", dst2);
+
 
 	// Step4. 从第一张图中选择一条直线，然后遍历第二张图，找到最佳的配对直线
 	vector<vector<Line>> pairSet = makePair(lineSet1, lineSet2, threshold);
@@ -592,6 +616,9 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 	//imshow("配对后的图像1", dst3);
 	//imshow("配对后的图像2", dst4);
 
+	//imwrite("配对后的图像1.jpg", dst3);
+	//imwrite("配对后的图像2.jpg", dst4);
+
 	// Step 5. 计算直线与其他直线的夹角，构造夹角矩阵
 	vector<vector<double>> angleList1, angleList2;
 	for (int i = 0; i < pairLen; i++) {
@@ -600,8 +627,13 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 
 		for (int j = i + 1; j < pairLen; j++) {
 			vector<Line> v2 = pairSet[j];
-			angle1.push_back(getAngle(v1[0].k, v2[0].k));
-			angle2.push_back(getAngle(v1[1].k, v2[1].k));
+			 angle1.push_back(getAngle(v1[0].k, v2[0].k));
+			 angle2.push_back(getAngle(v1[1].k, v2[1].k));
+
+			// 除了夹角以外也要考虑长度
+			//angle1.push_back(lineDiff(v1[0], v2[0]));
+			//angle2.push_back(lineDiff(v1[1], v2[1]));
+
 		}
 		angleList1.push_back(angle1);
 		angleList2.push_back(angle2);
@@ -612,7 +644,11 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 
 	// 然后计算夹角矩阵的相似度
 	double rate = calculateCorr2(angleList1, angleList2);
-	// rate *= (double) pairLen / length1;
+	// cout << "rate =" << rate << " "<<pairLen << " " << length1 << " " << length2 << endl;
+
+	if (length1 != length2) {
+		rate *= (double) min(length1, length2) / max(length1, length2); 
+	}
 
 	return rate;
 }
@@ -660,6 +696,9 @@ double calculateCorr2(vector<vector<double>> m1, vector<vector<double>> m2) {
 	double mean1 = calculateMean(m1);
 	double mean2 = calculateMean(m2);
 
+	// 增加一条判断，如果平均值相似，则认为是两张完全相同的图像
+	if (abs(mean1 - mean2) <= 1e-6 ) { return 1.0; }
+
 	//计算分子
 	double numerator = 0;
 	size_t len = m1.size();
@@ -672,6 +711,7 @@ double calculateCorr2(vector<vector<double>> m1, vector<vector<double>> m2) {
 			numerator += mean1 * mean2;
 		}
 	}
+
 
 	//计算分母 sqrt(pow(x,2) + pow(y,2));
 	double d1 = 0;
