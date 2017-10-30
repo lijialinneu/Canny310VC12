@@ -156,12 +156,6 @@ double solution(string path1, string path2) {
 	double height = (double)image1.rows / image1.cols * image2.cols;
 	resize(image1, image1, Size(image2.cols, height), 0, 0, CV_INTER_LINEAR);
 
-	// 显示原始图像
-	// Mat image3 = imread(path2);
-	// imwrite(path1 + "原始图像.jpg", image1);
-	// imwrite(path2 + "原始图像.jpg", image3);
-
-
 	vector<Vec4f> lines_std1 = operation(path1, image1);
 	vector<Vec4f> lines_std2 = operation(path2, image2);
 
@@ -170,7 +164,6 @@ double solution(string path1, string path2) {
 	// 直线的聚类，延长，求出垂直、水平棱角线
 
 	double rate = match(lines_std1, lines_std2, image1, image2);
-	//cout << "匹配度是：" << rate << endl;
 
 	vector<Vec4f>().swap(lines_std1);
 	vector<Vec4f>().swap(lines_std2);
@@ -594,9 +587,6 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 	//drawLine(lineSet1, dst1, Scalar(0,0,0), "连接、聚合后的图像1");
 	//drawLine(lineSet2, dst2, Scalar(0,0,0), "连接、聚合后的图像2");
 
-	//imwrite("连接聚合后的图像1.jpg", dst1);
-	//imwrite("连接聚合后的图像2.jpg", dst2);
-
 
 	// Step4. 从第一张图中选择一条直线，然后遍历第二张图，找到最佳的配对直线
 	vector<vector<Line>> pairSet = makePair(lineSet1, lineSet2, threshold);
@@ -616,8 +606,6 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 	//imshow("配对后的图像1", dst3);
 	//imshow("配对后的图像2", dst4);
 
-	//imwrite("配对后的图像1.jpg", dst3);
-	//imwrite("配对后的图像2.jpg", dst4);
 
 	// Step 5. 计算直线与其他直线的夹角，构造夹角矩阵
 	vector<vector<double>> angleList1, angleList2;
@@ -629,11 +617,6 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 			vector<Line> v2 = pairSet[j];
 			 angle1.push_back(getAngle(v1[0].k, v2[0].k));
 			 angle2.push_back(getAngle(v1[1].k, v2[1].k));
-
-			// 除了夹角以外也要考虑长度
-			//angle1.push_back(lineDiff(v1[0], v2[0]));
-			//angle2.push_back(lineDiff(v1[1], v2[1]));
-
 		}
 		angleList1.push_back(angle1);
 		angleList2.push_back(angle2);
@@ -644,12 +627,10 @@ double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArr
 
 	// 然后计算夹角矩阵的相似度
 	double rate = calculateCorr2(angleList1, angleList2);
-	// cout << "rate =" << rate << " "<<pairLen << " " << length1 << " " << length2 << endl;
 
 	if (length1 != length2) {
 		rate *= (double) min(length1, length2) / max(length1, length2); 
 	}
-
 	return rate;
 }
 
