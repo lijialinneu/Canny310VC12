@@ -54,7 +54,7 @@ int main() {
 
 	string dir = "images/"; // 图片的目录
 
-	
+	/*
 
 	// 测试1，肉眼相似图片间的相似度
 	cout << "第一组测试" << endl;
@@ -113,11 +113,11 @@ int main() {
 		double rate = solution(path1, path2);
 	}
 	cout << endl;
+	*/
 
-
-	//string path1 = dir + "image0.jpg";
-	//string path2 = dir + "image1.jpg";
-	//double rate = solution(path1, path2);
+	string path1 = dir + "image0.jpg";
+	string path2 = dir + "image1.jpg";
+	double rate = solution(path1, path2);
 
 	
 	waitKey(0);
@@ -198,14 +198,14 @@ vector<Vec4f> operation(string path, Mat image) {
 	// Detect the lines
 	ls->detect(image, lines_std);
 
-
+	
 	// Show found lines
 	//Mat drawnLines(image);
-	//Mat only_lines(image.size(), image.type());
+	Mat only_lines(image.size(), image.type());
 	//ls->drawSegments(drawnLines, lines_std);
-	//ls->drawSegments(only_lines, lines_std);
+	ls->drawSegments(only_lines, lines_std);
 	// imshow(path, drawnLines);
-    // imshow(path, only_lines);
+     imshow(path, only_lines);
 	// imwrite(path + "直线提取.jpg", only_lines);
 
 	return lines_std;
