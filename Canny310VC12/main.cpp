@@ -47,15 +47,42 @@ double calculateMean(vector<vector<double>> m); // 计算矩阵的相似度
 double calculateCorr2(vector<vector<double>> m1,
 	vector<vector<double>> m2);
 
+// 图像融合质量实验部分
+void cal_mean_stddev(string path); // 计算图像的标准差
+void cal_mean_gradient(string path); // 计算图像的平均梯度
+
 /***************************** 函数声明部分 end *************************************/
 
 
 int main() {
 
 	string dir = "images/"; // 图片的目录
+	
+	// 测试0 测试image0和其他所有图片的相似度
+	/*string path1 = dir + "image0.jpg";
+	
+	string arr[] = { 
+		"image1.jpg", "image2.jpg",
+		"image3.jpg", "image4.jpg",
+		"image5.jpg", "image6.jpg",
+		"image7.jpg", "image8.jpg",
+		"image9.jpg", "image10.jpg",
+		"image11.jpg", "image12.jpg",
+		"image13.jpg", "image14.jpg",
+		"image15.jpg", "image16.jpg",
+		"image17.jpg", "image18.jpg",
+		"image19.jpg", "image20.jpg",
+		"image21.jpg", "image22.jpg",
+		"image23.jpg"
+	};
+
+	for (int i = 0; i < 23; i++) {
+		string path2 = dir + arr[i];
+		double rate = solution(path1, path2);
+	}*/
+
 
 	/*
-
 	// 测试1，肉眼相似图片间的相似度
 	cout << "第一组测试" << endl;
 	string arr[] = { 
@@ -115,10 +142,17 @@ int main() {
 	cout << endl;
 	*/
 
-	string path1 = dir + "image0.jpg";
-	string path2 = dir + "image1.jpg";
-	double rate = solution(path1, path2);
 
+	// 图像融合质量的实验
+	// Part1. 计算图像的均值和标准差
+	// Part2. 计算图像的平均梯度
+    
+	string arr[] = { "images/1.jpg", "images/2.jpg","images/3.jpg" };
+
+	for (int i = 0; i < 3; i++) {
+		// cal_mean_stddev(arr[i]);
+		cal_mean_gradient(arr[i]);
+	}
 	
 	waitKey(0);
 	system("pause"); // 暂停
@@ -200,12 +234,12 @@ vector<Vec4f> operation(string path, Mat image) {
 
 	
 	// Show found lines
-	//Mat drawnLines(image);
-	Mat only_lines(image.size(), image.type());
-	//ls->drawSegments(drawnLines, lines_std);
-	ls->drawSegments(only_lines, lines_std);
+	// Mat drawnLines(image);
+	// Mat only_lines(image.size(), image.type());
+	// ls->drawSegments(drawnLines, lines_std);
+	// ls->drawSegments(only_lines, lines_std);
 	// imshow(path, drawnLines);
-     imshow(path, only_lines);
+    // imshow(path, only_lines);
 	// imwrite(path + "直线提取.jpg", only_lines);
 
 	return lines_std;
@@ -549,10 +583,9 @@ vector<vector<Line>> makePair(vector<Line> lineSet1, vector<Line>lineSet2, int t
  * 输出：匹配度，double类型
  *
  * 算法步骤如下：
- * 1. 计算每组直线的斜率，计算斜率阈值TK、距离阈值TP
- * 2. 根据斜率、距离的差值是否满足阈值，找到最佳匹配直线对
- * 3. 计算每组中的直线与本组中的其他直线之间的夹角
- * 4. 计算夹角矩阵之间的相似度，并把这个相似度，作为直线的匹配度，返回
+ * 1. 根据斜率、距离的差值是否满足阈值，找到最佳匹配直线对
+ * 2. 计算每组中的直线与本组中的其他直线之间的夹角
+ * 3. 计算夹角矩阵之间的相似度，并把这个相似度，作为直线的匹配度，返回
  * TODO: 通过直线构造三种直线组合，利用直线组合还原高级特征，通过高级特征图匹配
  */
 double match(vector<Vec4f> lines1, vector<Vec4f> lines2, InputArray m1, InputArray m2) {
@@ -715,3 +748,43 @@ double calculateCorr2(vector<vector<double>> m1, vector<vector<double>> m2) {
 
 }
 
+
+/****************************** 图像融合质量实验部分*****************************************/
+
+// 计算图像的标准差
+void cal_mean_stddev(string path) {
+	Mat src = imread(path);
+	Mat gray, mat_mean, mat_stddev;
+	cvtColor(src, gray, CV_RGB2GRAY); // 转换为灰度图
+	double m, s;
+	m = mean(gray)[0];
+	cout << path << "的灰度均值是：" << m << endl;
+	meanStdDev(gray, mat_mean, mat_stddev);
+	m = mat_mean.at<double>(0, 0);
+	s = mat_stddev.at<double>(0, 0);
+	cout << path << "的灰度均值是：" << m << endl;
+	cout << path << "的标准差是：" << s << endl;
+
+}
+
+
+// 计算图像的平均梯度
+void cal_mean_gradient(string path) {
+	Mat src = imread(path);
+	Mat img;
+	cvtColor(src, img, CV_RGB2GRAY); // 转换为灰度图
+	img.convertTo(img, CV_64FC1);
+	double tmp = 0;
+	int rows = img.rows - 1;
+	int cols = img.cols - 1;
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			double dx = img.at<double>(i, j + 1) - img.at<double>(i, j);
+			double dy = img.at<double>(i + 1, j) - img.at<double>(i, j);
+			double ds = std::sqrt((dx*dx + dy*dy) / 2);
+			tmp = tmp + ds;
+		}
+	}
+	double imageAvG = tmp / (rows*cols);
+	cout << path << "的平均梯度是：" << imageAvG << endl;
+}
