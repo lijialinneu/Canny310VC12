@@ -48,8 +48,14 @@ double calculateCorr2(vector<vector<double>> m1,
 	vector<vector<double>> m2);
 
 // 图像融合质量实验部分
-void cal_mean_stddev(string path); // 计算图像的标准差
+void cal_mean_stddev(string path);   // 计算图像的标准差
 void cal_mean_gradient(string path); // 计算图像的平均梯度
+
+
+//感知哈希算法的实现
+string p_hash(string path);    //计算图像的哈希字符串
+int hamming(string str1, string str2);// 计算汉明距离
+string str_to_hex(string s); // 字符串转16进制
 
 /***************************** 函数声明部分 end *************************************/
 
@@ -59,8 +65,8 @@ int main() {
 	string dir = "images/"; // 图片的目录
 	
 	// 测试0 测试image0和其他所有图片的相似度
-	/*string path1 = dir + "image0.jpg";
-	
+	string path1 = dir + "image0.jpg";
+
 	string arr[] = { 
 		"image1.jpg", "image2.jpg",
 		"image3.jpg", "image4.jpg",
@@ -79,10 +85,22 @@ int main() {
 	for (int i = 0; i < 23; i++) {
 		string path2 = dir + arr[i];
 		double rate = solution(path1, path2);
-	}*/
+	}
+
+
+
+	// 测试0的对比实验，感知哈希算法的实验
+	string path0 = "images/image0.jpg";
+	string path1 = "images/image1.jpg";
+	string h0 = p_hash(path0);
+	string h1 = p_hash(path1);
+	cout << hamming(h0, h1) << endl;
+
+
 
 
 	/*
+	
 	// 测试1，肉眼相似图片间的相似度
 	cout << "第一组测试" << endl;
 	string arr[] = { 
@@ -140,19 +158,20 @@ int main() {
 		double rate = solution(path1, path2);
 	}
 	cout << endl;
-	*/
+	
 
 
 	// 图像融合质量的实验
 	// Part1. 计算图像的均值和标准差
 	// Part2. 计算图像的平均梯度
     
-	string arr[] = { "images/1.jpg", "images/2.jpg","images/3.jpg" };
-
+	string arr[] = { "images/1.jpg", "images/2.jpg","images/3.jpg"};
 	for (int i = 0; i < 3; i++) {
-		// cal_mean_stddev(arr[i]);
+		cal_mean_stddev(arr[i]);
 		cal_mean_gradient(arr[i]);
 	}
+
+	*/
 	
 	waitKey(0);
 	system("pause"); // 暂停
@@ -757,8 +776,8 @@ void cal_mean_stddev(string path) {
 	Mat gray, mat_mean, mat_stddev;
 	cvtColor(src, gray, CV_RGB2GRAY); // 转换为灰度图
 	double m, s;
-	m = mean(gray)[0];
-	cout << path << "的灰度均值是：" << m << endl;
+	//m = mean(gray)[0];
+	//cout << path << "的灰度均值是：" << m << endl;
 	meanStdDev(gray, mat_mean, mat_stddev);
 	m = mat_mean.at<double>(0, 0);
 	s = mat_stddev.at<double>(0, 0);
@@ -787,4 +806,81 @@ void cal_mean_gradient(string path) {
 	}
 	double imageAvG = tmp / (rows*cols);
 	cout << path << "的平均梯度是：" << imageAvG << endl;
+}
+
+
+
+//感知哈希算法的实现
+string p_hash(string path) {
+	
+    // Step1. 把图像缩小为 8 * 8
+	Mat src = imread(path, 0);
+	resize(src, src, Size(8, 8), 0, 0, CV_INTER_LINEAR);
+
+	// Step2. 计算64个像素的灰度均值
+	double avg = mean(src)[0];
+	
+	// Step3. 与平均值比较，生成01字符串
+	string str = "";
+	for (int i = 0; i < 8; i++) {
+		unsigned char* data = src.ptr(i);
+		for (int j = 0; j < 8; j++) {
+			if (data[j] <= avg) {
+				str += "0";
+			}else {
+				str += "1";
+			}
+		}
+	}
+
+	// Step4. 计算哈希值
+	string h = "";
+	for (int i = 0; i < 61; i+=4) {
+		string s = str.substr(i,4);
+		h += str_to_hex(s);
+	}
+	return h;
+}
+
+// 字符串转16进制
+string str_to_hex(string s) {
+	string result = "";
+	int num = 0, p = 3;
+	for (int i = 0; i < 4; i++) {
+		if (s[i] == '1') {
+			num += pow(2, p);
+		}
+		p--;
+	}
+	if (num == 10) {
+		result += "a";
+	}else if (num == 11) {
+		result += "b";
+	}else if (num == 12) {
+		result += "c";
+	}else if (num == 13) {
+		result += "d";
+	}else if (num == 14) {
+		result += "e";
+	}
+	else if (num == 15) {
+		result += "f";
+	}else {
+		stringstream ss;
+		ss << num;
+		result += ss.str();
+	}
+	return result;
+}
+
+
+// 计算汉明距离
+int hamming(string str1, string str2) {
+	int count = 0;
+	for (int i = 0; i < 16; i++) {
+		if (str1[i] != str2[i]) {
+			count++;
+		}
+	}
+	return count;
 }
