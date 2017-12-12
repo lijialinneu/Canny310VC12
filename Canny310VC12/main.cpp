@@ -24,14 +24,13 @@ using namespace std;
 
 /***************************** 函数声明部分 start ***********************************/
 
-double solution(string path1, string path2);       // 程序的入口，参数为两个图片的路径 
+double solution(string path1, string path2);     // 程序的入口，参数为两个图片的路径
 vector<Vec4f> operation(string path, Mat image); // 对输入的图像进行直线检测
 vector<Line> createLine(vector<Vec4f> lines);    // 构造直线
 bool canCluster(Line l1, Line l2, int th);       // 判断能否聚合或连接
 bool isPointNear(Point p1, Point p2, double th); // 判断两个点是否接近
 double distanceBetweenLine(Line l1, Line l2);    // 估计两条直线间的距离
 int isConnect(Line l1, Line l2, int th);         // 返回连接的类型
-
 vector<Line> connectLines(vector<Line> lines, int th, Mat dst); // 连接直线
 vector<Line> clusterLines(vector<Line> lines, int th, Mat dst); // 聚合直线
 vector<Line> getTopK(vector<Line> lines, int K);         // 取得topK的直线
@@ -52,10 +51,13 @@ void cal_mean_stddev(string path);   // 计算图像的标准差
 void cal_mean_gradient(string path); // 计算图像的平均梯度
 
 
-//感知哈希算法的实现
+// 感知哈希算法的实现
 string p_hash(string path);    //计算图像的哈希字符串
 int hamming(string str1, string str2);// 计算汉明距离
 string str_to_hex(string s); // 字符串转16进制
+
+// 图像直方图实验部分
+void hist_cal_similarity(string str1, string str2);
 
 /***************************** 函数声明部分 end *************************************/
 
@@ -64,7 +66,8 @@ int main() {
 
 	string dir = "images/"; // 图片的目录
 	
-	// 测试0 测试image0和其他所有图片的相似度
+	/****************** 测试image0和其他所有图片的相似度 ********************/
+	/*
 	string path1 = dir + "image0.jpg";
 
 	string arr[] = { 
@@ -86,21 +89,44 @@ int main() {
 		string path2 = dir + arr[i];
 		double rate = solution(path1, path2);
 	}
+	*/
 
-
-
-	// 测试0的对比实验，感知哈希算法的实验
+	/******************测试0的对比实验，感知哈希算法的实验 ******************/
+	/*
 	string path0 = "images/image0.jpg";
 	string path1 = "images/image1.jpg";
 	string h0 = p_hash(path0);
 	string h1 = p_hash(path1);
 	cout << hamming(h0, h1) << endl;
+	*/
 
 
+	/******************测试0的对比实验，图像直方图算法的实验 ******************/
+	string path1 = dir + "image0.jpg";
 
+	string arr[] = {
+		"image0.jpg",
+		"image1.jpg", "image2.jpg",
+		"image3.jpg", "image4.jpg",
+		"image5.jpg", "image6.jpg",
+		"image7.jpg", "image8.jpg",
+		"image9.jpg", "image10.jpg",
+		"image11.jpg", "image12.jpg",
+		"image13.jpg", "image14.jpg",
+		"image15.jpg", "image16.jpg",
+		"image17.jpg", "image18.jpg",
+		"image19.jpg", "image20.jpg",
+		"image21.jpg", "image22.jpg",
+		"image23.jpg"
+	};
 
+	for (int i = 0; i < 24; i++) {
+		string path2 = dir + arr[i];
+		hist_cal_similarity(path1, path2);
+	}
+
+	/*********************** 轮廓相似度测试实验 *********************/
 	/*
-	
 	// 测试1，肉眼相似图片间的相似度
 	cout << "第一组测试" << endl;
 	string arr[] = { 
@@ -158,9 +184,10 @@ int main() {
 		double rate = solution(path1, path2);
 	}
 	cout << endl;
+	*/
 	
-
-
+	/*********************** 图像融合质量实验 ***********************/
+	/*
 	// 图像融合质量的实验
 	// Part1. 计算图像的均值和标准差
 	// Part2. 计算图像的平均梯度
@@ -170,9 +197,15 @@ int main() {
 		cal_mean_stddev(arr[i]);
 		cal_mean_gradient(arr[i]);
 	}
-
 	*/
 	
+    /********************** image0和image1的实验 ********************/
+	/*
+	string path1 = dir + "image0.jpg";
+    string path2 = dir + "image1.jpg";
+    double rate = solution(path1, path2);
+	*/
+
 	waitKey(0);
 	system("pause"); // 暂停
 	return 0;
@@ -237,9 +270,10 @@ vector<Vec4f> operation(string path, Mat image) {
 	blur(image, image, Size(3, 3));  // 使用3x3内核来降噪
 	// Canny(image, image, 50, 200, 3); // Apply canny edge
 	
-	myCanny(image, image, 50, 200, 3);
+	// myCanny(image, image, 50, 200, 3);
+	myCanny(image, image, 100, 200, 3);
 	// imwrite(path + "(50,200)边缘检测结果图.jpg", image);
-	// imshow(path+"边缘检测", image);
+	 imshow(path+"边缘检测", image);
 
 	// Create and LSD detector with standard or no refinement.
 	// LSD_REFINE_NONE，没有改良的方式；
@@ -316,7 +350,7 @@ vector<Line> cleanShort(vector<Line> lines) {
 
 /**
  * 判断两条直线是否具备聚合条件
- * 判断规则：斜率相近，直线间距相近，则可以聚合
+ * 判断规则：斜率相近，直线间距相近，则可以聚合(此处没用长度作为判断条件)
  * 输入：两条直线（Line），和阈值
  * 输出：bool型，true表示两条直线可以聚合，false表示不能聚合
  */
@@ -529,7 +563,10 @@ vector<Line> getTopK(vector<Line> lines, int K) {
  * 输出：直线之间的差距，double类型
  */
 double lineDiff(Line line1, Line line2) {
-	return abs(line1.length - line2.length) * abs(line1.k - line2.k);
+	double len = line1.length - line2.length;
+	double k = line1.k - line2.k;
+	return sqrt(len*len + k*k);
+	//return abs(line1.length - line2.length) * abs(line1.k - line2.k);
 }
 
 
@@ -883,4 +920,27 @@ int hamming(string str1, string str2) {
 		}
 	}
 	return count;
+}
+
+
+
+/****************************** 直方图计算图像相似度 实验部分********************************/
+
+// 直方图计算图像相似度
+void hist_cal_similarity(string path1, string path2) {
+	Mat image1 = imread(path1, IMREAD_GRAYSCALE);
+	Mat image2 = imread(path2, IMREAD_GRAYSCALE);
+
+	Mat hist1, hist2;
+	int histSize = 256;
+	float range[] = { 0, 256 };
+	const float* histRange = { range };
+	bool uniform = true;
+	bool accumulate = false;
+
+	calcHist(&image1, 1, 0, cv::Mat(), hist1, 1, &histSize, &histRange, uniform, accumulate);
+	calcHist(&image2, 1, 0, cv::Mat(), hist2, 1, &histSize, &histRange, uniform, accumulate);
+
+	double similarity = compareHist(hist1, hist2, CV_COMP_CORREL);
+	cout << path1 << "与" << path2 << "的相似度是" << similarity << endl;
 }

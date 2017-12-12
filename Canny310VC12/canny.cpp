@@ -276,7 +276,7 @@ void myCanny(InputArray _src, OutputArray _dst,
 			}
 			int average = sum / 3;
 			if (average < cvFloor(low_thresh)) {
-				low = cvFloor(low_thresh) - average / 3;
+				low = cvFloor(low_thresh) - average;
 			}
 
             #define CANNY_SHIFT 15  
